@@ -1,0 +1,1 @@
+"""Just a REST switch with resource template instead of fixed resource"""
