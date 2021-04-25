@@ -1,4 +1,3 @@
-
 import asyncio
 import logging
 
@@ -28,9 +27,23 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity_component import DEFAULT_SCAN_INTERVAL
 
 
-from homeassistant.components.rest.switch import RestSwitch, CONF_BODY_OFF, CONF_BODY_ON, CONF_IS_ON_TEMPLATE, CONF_STATE_RESOURCE\
-    , DEFAULT_METHOD, DEFAULT_BODY_OFF, DEFAULT_BODY_ON, DEFAULT_NAME, DEFAULT_TIMEOUT, DEFAULT_VERIFY_SSL
+from homeassistant.components.rest.switch import (
+    RestSwitch,
+    CONF_BODY_OFF,
+    CONF_BODY_ON,
+    CONF_IS_ON_TEMPLATE,
+    CONF_STATE_RESOURCE,
+    DEFAULT_METHOD,
+    DEFAULT_BODY_OFF,
+    DEFAULT_BODY_ON,
+    DEFAULT_NAME,
+    DEFAULT_TIMEOUT,
+    DEFAULT_VERIFY_SSL,
+)
 
+from homeassistant.exceptions import HomeAssistantError, PlatformNotReady
+
+_LOGGER = logging.getLogger(__name__)
 SUPPORT_REST_METHODS = ["post", "put", "patch"]
 CONF_STATE_TEMPLATE = "state_template"
 
@@ -123,41 +136,45 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
             "Add http:// or https:// to your URL"
         )
     except (asyncio.TimeoutError, aiohttp.ClientError):
-        _LOGGER.error("No route to resource/endpoint: %s", resource)
+        _LOGGER.warning("No route to resource/endpoint: %s", resource)
+        raise PlatformNotReady()
 
 
 class TemplateRestSwitch(RestSwitch):
     """Representation of a switch that can be toggled using REST, but as template resource."""
 
-    def __init__(self,
-                 name,
-                 resource,
-                 resource_template,
-                 state_resource,
-                 # state_template,
-                 method,
-                 headers,
-                 params,
-                 auth,
-                 body_on,
-                 body_off,
-                 is_on_template,
-                 timeout,
-                 verify_ssl,
-                 ):
-        RestSwitch.__init__(self,
-                            name=name,
-                            resource=resource,
-                            state_resource=state_resource,
-                            method=method,
-                            headers=headers,
-                            params=params,
-                            auth=auth,
-                            body_on=body_on,
-                            body_off=body_off,
-                            is_on_template=is_on_template,
-                            timeout=timeout,
-                            verify_ssl=verify_ssl)
+    def __init__(
+        self,
+        name,
+        resource,
+        resource_template,
+        state_resource,
+        # state_template,
+        method,
+        headers,
+        params,
+        auth,
+        body_on,
+        body_off,
+        is_on_template,
+        timeout,
+        verify_ssl,
+    ):
+        RestSwitch.__init__(
+            self,
+            name=name,
+            resource=resource,
+            state_resource=state_resource,
+            method=method,
+            headers=headers,
+            params=params,
+            auth=auth,
+            body_on=body_on,
+            body_off=body_off,
+            is_on_template=is_on_template,
+            timeout=timeout,
+            verify_ssl=verify_ssl,
+        )
         self._resource_template = resource_template
 
     async def set_device_state(self, body):
@@ -165,8 +182,10 @@ class TemplateRestSwitch(RestSwitch):
         websession = async_get_clientsession(self.hass, self._verify_ssl)
 
         if self._resource_template is not None:
-            self._resource = self._resource_template.async_render_with_possible_json_value(
-                self._resource_template, "http://no_resource_computed_error"
+            self._resource = (
+                self._resource_template.async_render_with_possible_json_value(
+                    self._resource_template, "http://no_resource_computed_error"
+                )
             )
 
         with async_timeout.timeout(self._timeout):
