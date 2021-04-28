@@ -197,3 +197,22 @@ class TemplateRestSwitch(RestSwitch):
                 params=self._params,
             )
             return req
+
+    async def async_update(self):
+        """Get the current state, catching errors."""
+        try:
+            await self.get_device_state(self.hass)
+        except asyncio.TimeoutError:
+            _LOGGER.warning(
+                "%s : Timed out while fetching data (resource : %s)",
+                self._name,
+                self._resource,
+            )
+            self._state = None
+        except aiohttp.ClientError as err:
+            _LOGGER.warning(
+                "%s : Error while fetching data (resource : %s)",
+                self._name,
+                self._resource,
+            )
+            self._state = None
